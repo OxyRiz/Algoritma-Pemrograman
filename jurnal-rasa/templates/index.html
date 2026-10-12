@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jurnal Rasa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body data-mood="{{ edit.mood if edit else '' }}">
+
+  <header class="top">
+    <h1>Jurnal Rasa</h1>
+    <p>Tulis harimu dan tandai suasana hatimu.</p>
+  </header>
+
+  <main class="layout">
+
+    <!-- Form tulis / ubah catatan -->
+    <section class="write" aria-labelledby="write-title">
+      <form method="post"
+            action="{{ url_for('ubah', entry_id=edit.id) if edit else url_for('tambah') }}">
+        <h2 id="write-title">{{ 'Ubah catatan' if edit else 'Bagaimana harimu?' }}</h2>
+
+        <fieldset class="moods">
+          <legend class="sr">Pilih mood</legend>
+          {% for key, m in moods.items() %}
+          <label class="mood" data-mood="{{ key }}">
+            <input type="radio" name="mood" value="{{ key }}" required
+                   {% if edit and edit.mood == key %}checked{% endif %}>
+            <span class="emoji" aria-hidden="true">{{ m.emoji }}</span>{{ m.label }}
+          </label>
+          {% endfor %}
+        </fieldset>
+
+        <label for="title">Judul (boleh dikosongkan)</label>
+        <input id="title" name="title" type="text" maxlength="100"
+               value="{{ edit.title if edit else '' }}">
+
+        <label for="content">Ceritakan harimu</label>
+        <textarea id="content" name="content" rows="8" required>{{ edit.content if edit else '' }}</textarea>
+
+        <div class="actions">
+          <button type="submit">{{ 'Simpan perubahan' if edit else 'Simpan catatan' }}</button>
+          {% if edit %}<a class="link" href="{{ url_for('index') }}">Batal</a>{% endif %}
+        </div>
+      </form>
+    </section>
+
+    <!-- Statistik + daftar catatan -->
+    <div class="read">
+
+      <section class="stats" aria-labelledby="stats-title">
+        <h2 id="stats-title">Mood kamu sejauh ini</h2>
+        {% if total == 0 %}
+          <p class="empty">Belum ada data. Simpan catatan pertamamu untuk melihat grafik mood.</p>
+        {% else %}
+          <ul>
+            {% for key, m in moods.items() %}
+            {% set n = counts.get(key, 0) %}
+            <li data-mood="{{ key }}" class="{{ 'active' if active_mood == key }}">
+              <a href="{{ url_for('index', mood=key) }}">
+                <span class="stat-name">{{ m.emoji }} {{ m.label }}</span>
+                <span class="bar"><span style="width: {{ (n / biggest * 100) | round }}%"></span></span>
+                <span class="stat-num">{{ n }}</span>
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if active_mood %}
+            <a class="link" href="{{ url_for('index') }}">Tampilkan semua catatan</a>
+          {% endif %}
+        {% endif %}
+      </section>
+
+      <section class="entries" aria-labelledby="entries-title">
+        <h2 id="entries-title">
+          {% if active_mood %}Catatan: {{ moods[active_mood].label }}{% else %}Semua catatan{% endif %}
+        </h2>
+
+        {% for e in entries %}
+        <article class="entry" data-mood="{{ e.mood }}">
+          <header>
+            <span class="badge">{{ moods[e.mood].emoji }} {{ moods[e.mood].label }}</span>
+            <time datetime="{{ e.created_at }}">{{ e.created_at | tanggal }}</time>
+          </header>
+          {% if e.title %}<h3>{{ e.title }}</h3>{% endif %}
+          <p>{{ e.content }}</p>
+          <footer>
+            <a class="link" href="{{ url_for('index', ubah=e.id) }}">Ubah</a>
+            <form method="post" action="{{ url_for('hapus', entry_id=e.id) }}" class="inline"
+                  data-confirm="Hapus catatan ini?">
+              <button type="submit" class="link danger">Hapus</button>
+            </form>
+          </footer>
+        </article>
+        {% else %}
+          <p class="empty">
+            {% if active_mood %}Belum ada catatan dengan mood ini.
+            {% else %}Belum ada catatan. Pilih mood di sebelah kiri, lalu mulai menulis.{% endif %}
+          </p>
+        {% endfor %}
+      </section>
+
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
